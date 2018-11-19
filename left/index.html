@@ -1,0 +1,147 @@
+<html>
+<head>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<style>
+html, body {
+  width:  100%;
+  height: 100%;
+  margin: 0px;
+  font-family: Arial, sans-serif;
+  touch-action: manipulation;
+}
+td {
+  font-size: 2em;
+  user-select: none;
+}
+canvas {
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+}
+</style>
+</head>
+
+<body>
+<audio id="fail-sound">
+  <source src="../pong_fail.wav" type="audio/mpeg">
+</audio>
+
+<audio id="bounce-wall-sound">
+  <source src="../pong_hitwall.wav" type="audio/mpeg">
+</audio>
+
+<audio id="bounce-paddle-sound">
+  <source src="../pong_hitpaddle.wav" type="audio/mpeg">
+</audio>
+
+<canvas id="game"></canvas>
+
+<table style="margin-left:auto; margin-right:auto" id="controls">
+<tr id="controls_tr">
+<td id="up_button" width="50%" align="center" style="background-color:grey; color:white;" onmousedown="setPaddleMovement(-1);" onmouseup="setPaddleMovement(0);" onmouseout="setPaddleMovement(0);" ontouchstart="setPaddleMovement(-1);" ontouchend="setPaddleMovement(0);">^</td>
+<td id="down_button" width="50%" align="center" style="background-color:grey; color:white;" onmousedown="setPaddleMovement(1);" onmouseup="setPaddleMovement(0);" onmouseout="setPaddleMovement(0);" ontouchstart="setPaddleMovement(1);" ontouchend="setPaddleMovement(0);">v</td>
+</tr>
+</table>
+
+<script>
+
+// INIT
+
+var pixel_size;
+var side = 'left';
+
+if(window.innerWidth*1.6 < window.innerHeight) {
+  pixel_size = 0.9*window.innerWidth/80;
+} else {
+  pixel_size = 0.9*window.innerHeight/128;
+}
+
+var canvas = document.getElementById('game');
+var context = canvas.getContext('2d');
+
+context.canvas.height = pixel_size*128;
+context.canvas.width = pixel_size*80
+
+var controls = document.getElementById('controls');
+controls.style.width = pixel_size*80;
+
+document.getElementById('up_button').style.height = window.innerHeight*0.09;
+document.getElementById('down_button').style.height = window.innerHeight*0.09;
+
+function setPaddleMovement(value) {
+  if(value == 1) {
+    document.getElementById('down_button').style.backgroundColor = 'green';
+  } else {
+    document.getElementById('down_button').style.backgroundColor = 'grey';
+  }
+  if(value == -1) {
+    document.getElementById('up_button').style.backgroundColor = 'green';
+  } else {
+    document.getElementById('up_button').style.backgroundColor = 'grey';
+  }
+
+  $.ajax({
+    url: "../set_paddle_movement.php?paddle=" + side + "&movement=" + value, 
+    dataType: "json",
+    success: function(result) {}
+  });
+}
+
+clearScreen()
+
+function clearScreen() { 
+  context.fillStyle = "black";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawRect(x, y, w, h) {
+  if(side == 'right') {
+    x -= 80;
+  }
+  context.fillStyle = "white";
+  context.fillRect(x*pixel_size, y*pixel_size, w*pixel_size, h*pixel_size);
+}
+
+function drawNum(x,y,num) {
+  context.font="8vw Arial"
+  context.fillText(num, x,y);
+}
+
+setInterval(function() {
+  $.ajax({
+    url: "../ajax.php", 
+    dataType: "json",
+    success: function(result){
+      x = parseInt(result['ball']['x']);
+      y = parseInt(result['ball']['y']);
+      
+      paddle_x = parseInt(result['paddles'][side]['x']);
+      paddle_y = parseInt(result['paddles'][side]['y']);
+      paddle_score = parseInt(result['paddles'][side]['score']);
+      
+      clearScreen();
+      drawRect(x, y, 1, 1);
+      drawRect(paddle_x, paddle_y, 1, 16);
+      drawNum(38*pixel_size,12*pixel_size, paddle_score);
+      
+      if(result['ball']['bounced'] == '1') {
+        document.getElementById('bounce-paddle-sound').play();
+      }
+      
+      if(y == 0 || y == 127) {
+        document.getElementById('bounce-wall-sound').play();
+      }
+      
+      if(x == 0 || x == 159) {
+        document.getElementById('fail-sound').play();
+      }
+    }
+  });
+}, 60);
+</script>
+
+</body>
+</html>
